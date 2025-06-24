@@ -106,6 +106,8 @@ new_dd = st.number_input("δD", step=0.1, format="%.1f")
 new_dp = st.number_input("δP", step=0.1, format="%.1f")
 new_dh = st.number_input("δH", step=0.1, format="%.1f")
 
+radius = st.slider("Choose Ra cutoff value:", 2.0, 15.0, 7.0, step=0.1)
+
 if st.button("Add Solvent"):
     if new_name.strip() == "":
         st.warning("Please enter a solvent name.")
