@@ -108,7 +108,19 @@ new_dh = st.number_input("δH", step=0.1, format="%.1f")
 
 if st.button("Add Solvent"):
     if new_name.strip() == "":
-        st.warning("Geef een naam op.")
+        st.warning("Please enter a solvent name.")
     else:
+        # Voeg toe aan solvent dictionary
         materials["Solvents"][new_name] = (new_dd, new_dp, new_dh)
-        st.success(f"Solvent '{new_name}' is toegevoegd.")
+        st.success(f"Custom solvent '{new_name}' added!")
+
+        # 🧠 Bereken direct compatibiliteit met geselecteerde resin
+        if resin_dd is not None and resin_dp is not None and resin_dh is not None:
+            ra = calculate_ra(resin_dd, resin_dp, resin_dh, new_dd, new_dp, new_dh)
+
+            if ra <= radius:
+                st.success(f"🟢 '{new_name}' is Compatible (Ra = {ra:.2f} ≤ {radius})")
+            elif ra <= radius + 2:
+                st.warning(f"🟡 '{new_name}' is Borderline (Ra = {ra:.2f})")
+            else:
+                st.error(f"🔴 '{new_name}' is Incompatible (Ra = {ra:.2f} > {radius + 2})")
