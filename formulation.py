@@ -3,15 +3,9 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# Logo
 logo = Image.open("formchem_logo.png")
-st.markdown(
-    """
-    <div style='display: flex; align-items: center;'>
-        <img src='formchem_logo.png' width='120' style='margin-right: 10px'>
-    </div>
-    """, unsafe_allow_html=True
-)
+st.image(logo, width=120)
+
 
 st.title("HSP Compatibility Calculator")
 st.markdown("Bereken de Ra-waarde om compatibiliteit tussen resin en solvent te beoordelen.")
