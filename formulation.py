@@ -1,13 +1,22 @@
 import streamlit as st
+from PIL import Image
+import matplotlib.pyplot as plt
+import pandas as pd
 
-st.title("HSP Coating Compatibility Calculator")
+# Logo
+logo = Image.open("formchem_logo.png")
+st.markdown(
+    """
+    <div style='display: flex; align-items: center;'>
+        <img src='formchem_logo.png' width='120' style='margin-right: 10px'>
+    </div>
+    """, unsafe_allow_html=True
+)
 
-st.markdown("""
-Enter the Hansen Solubility Parameters (HSP) for the **resin** and the **solvent**.
-We'll calculate the Ra value to see if they're compatible.
-""")
+st.title("HSP Compatibility Calculator")
+st.markdown("Bereken de Ra-waarde om compatibiliteit tussen resin en solvent te beoordelen.")
 
-# Sample database of materials
+# --- Sample database ---
 materials = {
     "Resins": {
         "Epoxy Resin": (17.0, 10.0, 8.0),
@@ -21,50 +30,91 @@ materials = {
     }
 }
 
-st.subheader("Choose a Resin")
-resin_choice = st.selectbox("Resin", list(materials["Resins"].keys()))
-resin_dd, resin_dp, resin_dh = materials["Resins"][resin_choice]
-
-st.subheader("Choose a Solvent")
-solvent_choice = st.selectbox("Solvent", list(materials["Solvents"].keys()))
-solvent_dd, solvent_dp, solvent_dh = materials["Solvents"][solvent_choice]
-
-
-# Calculate Ra
+# --- Functie voor Ra ---
 def calculate_ra(dd1, dp1, dh1, dd2, dp2, dh2):
     return ((4 * (dd1 - dd2)**2) + ((dp1 - dp2)**2) + ((dh1 - dh2)**2))**0.5
 
-if st.button("Calculate Compatibility"):
+# --- User inputs ---
+resin_choice = st.selectbox("🔹 Kies een Resin", list(materials["Resins"].keys()))
+resin_dd, resin_dp, resin_dh = materials["Resins"][resin_choice]
+
+solvent_choice = st.selectbox("🔹 Kies een Solvent", list(materials["Solvents"].keys()))
+solvent_dd, solvent_dp, solvent_dh = materials["Solvents"][solvent_choice]
+
+# --- Compatibility calculation ---
+if st.button("▶️ Calculate Compatibility"):
     ra = calculate_ra(resin_dd, resin_dp, resin_dh, solvent_dd, solvent_dp, solvent_dh)
     st.write(f"**Ra = {ra:.2f}**")
 
-    if ra <= 4:
-        st.success("🟢 Highly Compatible")
-    elif ra <= 7:
-        st.warning("🟡 Borderline Compatibility")
+    # Compatibility threshold
+    radius = st.slider("Stel compatibiliteitsgrens (Ra)", 2.0, 15.0, 7.0, step=0.1)
+
+    if ra <= radius:
+        st.success(f"🟢 Compatible (Ra = {ra:.2f} ≤ {radius})")
+    elif ra <= radius + 2:
+        st.warning(f"🟡 Borderline (Ra = {ra:.2f})")
     else:
-        st.error("🔴 Incompatible")
+        st.error(f"🔴 Incompatible (Ra = {ra:.2f} > {radius + 2})")
 
-import matplotlib.pyplot as plt
+    # --- Visualisatie plot ---
+    fig, ax = plt.subplots()
+    ax.scatter(resin_dd, resin_dp, color='blue', marker='*', s=150, label='Resin')
 
-# Plot the points in Hansen space (δD vs δP)
-fig, ax = plt.subplots()
-ax.scatter(resin_dd, resin_dp, color='blue', label='Resin', s=100)
-ax.scatter(solvent_dd, solvent_dp, color='green', label='Solvent', s=100)
+    for name, (s_dd, s_dp, s_dh) in materials["Solvents"].items():
+        s_ra = calculate_ra(resin_dd, resin_dp, resin_dh, s_dd, s_dp, s_dh)
+        if s_ra <= radius:
+            color = 'green'
+        elif s_ra <= radius + 2:
+            color = 'orange'
+        else:
+            color = 'red'
+        ax.scatter(s_dd, s_dp, color=color, s=80)
+        ax.text(s_dd + 0.1, s_dp + 0.1, name, fontsize=8)
 
-# Draw Ra as a line between points
-ax.plot([resin_dd, solvent_dd], [resin_dp, solvent_dp], 'k--', linewidth=1)
+    circle = plt.Circle((resin_dd, resin_dp), radius, color='blue', fill=False, linestyle='--', linewidth=1.5)
+    ax.add_patch(circle)
+    ax.set_xlabel("δD")
+    ax.set_ylabel("δP")
+    ax.set_title("Hansen Space Compatibility")
+    ax.grid(True)
+    ax.set_aspect('equal', adjustable='box')
+    st.pyplot(fig)
 
-# Axis labels and styling
-ax.set_xlabel("δD (Dispersion)")
-ax.set_ylabel("δP (Polar)")
-ax.set_title("Hansen Space: δD vs δP")
-ax.legend()
-ax.grid(True)
+    # --- Compatibiliteitstabel ---
+    st.subheader("🧾 Solvent Compatibility Table")
+    solvent_data = []
 
-# Show plot in Streamlit
-st.pyplot(fig)
+    for name, (s_dd, s_dp, s_dh) in materials["Solvents"].items():
+        s_ra = calculate_ra(resin_dd, resin_dp, resin_dh, s_dd, s_dp, s_dh)
+        if s_ra <= radius:
+            status = "🟢 Compatible"
+        elif s_ra <= radius + 2:
+            status = "🟡 Borderline"
+        else:
+            status = "🔴 Incompatible"
+        solvent_data.append({
+            "Solvent": name,
+            "δD": s_dd,
+            "δP": s_dp,
+            "δH": s_dh,
+            "Ra": round(s_ra, 2),
+            "Match": status
+        })
 
+    df = pd.DataFrame(solvent_data)
+    df = df.sort_values("Ra")
+    st.dataframe(df)
 
+# --- Nieuw solvent toevoegen ---
+st.subheader("➕ Add a Custom Solvent")
+new_name = st.text_input("Naam")
+new_dd = st.number_input("δD", step=0.1, format="%.1f")
+new_dp = st.number_input("δP", step=0.1, format="%.1f")
+new_dh = st.number_input("δH", step=0.1, format="%.1f")
 
-
+if st.button("Add Solvent"):
+    if new_name.strip() == "":
+        st.warning("Geef een naam op.")
+    else:
+        materials["Solvents"][new_name] = (new_dd, new_dp, new_dh)
+        st.success(f"Solvent '{new_name}' is toegevoegd.")
