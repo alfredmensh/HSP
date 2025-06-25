@@ -1,16 +1,46 @@
 import streamlit as st
 from PIL import Image
-import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib.pyplot as plt
 
+# --- Set up page configuration ---
+st.set_page_config(page_title="FormChemie", layout="centered")
+
+# --- Custom Orbitron Font and Glassy UI Styling ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Orbitron', sans-serif;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        color: #0D1B2A;
+    }
+
+    .block-container {
+        padding: 2rem 2rem 2rem 2rem;
+        background-color: rgba(255,255,255,0.85);
+        border-radius: 20px;
+        box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+    }
+
+    h1, h2, h3 {
+        color: #1A73E8;
+    }
+
+    </style>
+""", unsafe_allow_html=True)
+
+# --- Logo ---
 logo = Image.open("formchem_logo.png")
 st.image(logo, width=120)
 
+# --- Sidebar Navigation ---
+st.sidebar.title("🔬 FormChemie")
+page = st.sidebar.radio("Navigate", ["🏠 Home", "🧪 Formulation Tool", "➕ Custom Solvent"])
 
-st.title("HSP Compatibility Calculator")
-st.markdown("Bereken de Ra-waarde om compatibiliteit tussen resin en solvent te beoordelen.")
-
-# --- Sample database ---
+# --- Sample Database ---
 materials = {
     "Resins": {
         "Epoxy Resin": (17.0, 10.0, 8.0),
@@ -24,105 +54,84 @@ materials = {
     }
 }
 
-# --- Functie voor Ra ---
-def calculate_ra(dd1, dp1, dh1, dd2, dp2, dh2):
-    return ((4 * (dd1 - dd2)**2) + ((dp1 - dp2)**2) + ((dh1 - dh2)**2))**0.5
+# --- Page: Home ---
+if page == "🏠 Home":
+    st.title("Welcome to FormChemie")
+    st.markdown("""
+    **FormChemie** is a modern web tool for formulators in the coating and resin industries.  
+    We help chemists and engineers evaluate the **Hansen Solubility Parameters (HSP)**  
+    and determine **solvent-resin compatibility** through visual maps and compatibility scores.
 
-# --- User inputs ---
-resin_choice = st.selectbox("🔹 Kies een Resin", list(materials["Resins"].keys()))
-resin_dd, resin_dp, resin_dh = materials["Resins"][resin_choice]
+    🔍 _Check compatibility in seconds_  
+    🎨 _Use advanced Hansen space visualizations_  
+    ✏️ _Customize your own solvents or resins_  
+    """)
+    st.markdown("---")
+    st.info("This is a student project created to demonstrate computational chemistry applications.")
 
-solvent_choice = st.selectbox("🔹 Kies een Solvent", list(materials["Solvents"].keys()))
-solvent_dd, solvent_dp, solvent_dh = materials["Solvents"][solvent_choice]
+# --- Page: Formulation Tool ---
+elif page == "🧪 Formulation Tool":
+    st.title("HSP Compatibility Calculator")
+    resin_choice = st.selectbox("Choose a Resin", list(materials["Resins"].keys()))
+    solvent_choice = st.selectbox("Choose a Solvent", list(materials["Solvents"].keys()))
 
-# --- Compatibility calculation ---
-if st.button("▶️ Calculate Compatibility"):
-    ra = calculate_ra(resin_dd, resin_dp, resin_dh, solvent_dd, solvent_dp, solvent_dh)
-    st.write(f"**Ra = {ra:.2f}**")
+    resin_dd, resin_dp, resin_dh = materials["Resins"][resin_choice]
+    solvent_dd, solvent_dp, solvent_dh = materials["Solvents"][solvent_choice]
 
-    # Compatibility threshold
-    radius = st.slider("Stel compatibiliteitsgrens (Ra)", 2.0, 15.0, 7.0, step=0.1)
+    def calculate_ra(dd1, dp1, dh1, dd2, dp2, dh2):
+        return ((4*(dd1 - dd2)**2) + ((dp1 - dp2)**2) + ((dh1 - dh2)**2))**0.5
 
-    if ra <= radius:
-        st.success(f"🟢 Compatible (Ra = {ra:.2f} ≤ {radius})")
-    elif ra <= radius + 2:
-        st.warning(f"🟡 Borderline (Ra = {ra:.2f})")
-    else:
-        st.error(f"🔴 Incompatible (Ra = {ra:.2f} > {radius + 2})")
+    if st.button("Calculate Compatibility"):
+        ra = calculate_ra(resin_dd, resin_dp, resin_dh, solvent_dd, solvent_dp, solvent_dh)
+        radius = st.slider("Adjust Compatibility Radius (Ra)", 2.0, 15.0, 7.0, step=0.1)
 
-    # --- Visualisatie plot ---
-    fig, ax = plt.subplots()
-    ax.scatter(resin_dd, resin_dp, color='blue', marker='*', s=150, label='Resin')
-
-    for name, (s_dd, s_dp, s_dh) in materials["Solvents"].items():
-        s_ra = calculate_ra(resin_dd, resin_dp, resin_dh, s_dd, s_dp, s_dh)
-        if s_ra <= radius:
-            color = 'green'
-        elif s_ra <= radius + 2:
-            color = 'orange'
+        st.write(f"**Ra = {ra:.2f}**")
+        if ra <= radius:
+            st.success(f"🟢 Compatible")
+        elif ra <= radius + 2:
+            st.warning(f"🟡 Borderline")
         else:
-            color = 'red'
-        ax.scatter(s_dd, s_dp, color=color, s=80)
-        ax.text(s_dd + 0.1, s_dp + 0.1, name, fontsize=8)
+            st.error(f"🔴 Incompatible")
 
-    circle = plt.Circle((resin_dd, resin_dp), radius, color='blue', fill=False, linestyle='--', linewidth=1.5)
-    ax.add_patch(circle)
-    ax.set_xlabel("δD")
-    ax.set_ylabel("δP")
-    ax.set_title("Hansen Space Compatibility")
-    ax.grid(True)
-    ax.set_aspect('equal', adjustable='box')
-    st.pyplot(fig)
+        # --- Visualize Hansen Space ---
+        fig, ax = plt.subplots()
+        ax.scatter(resin_dd, resin_dp, color='blue', label='Resin', s=120, marker='*')
+        ax.scatter(solvent_dd, solvent_dp, color='green', label='Solvent', s=100)
+        ax.plot([resin_dd, solvent_dd], [resin_dp, solvent_dp], 'k--')
+        circle = plt.Circle((resin_dd, resin_dp), radius, color='blue', fill=False, linestyle='--')
+        ax.add_patch(circle)
 
-    # --- Compatibiliteitstabel ---
-    st.subheader("🧾 Solvent Compatibility Table")
-    solvent_data = []
+        ax.set_xlabel("δD")
+        ax.set_ylabel("δP")
+        ax.set_title("Hansen Space Visualization")
+        ax.legend()
+        ax.grid(True)
+        st.pyplot(fig)
 
-    for name, (s_dd, s_dp, s_dh) in materials["Solvents"].items():
-        s_ra = calculate_ra(resin_dd, resin_dp, resin_dh, s_dd, s_dp, s_dh)
-        if s_ra <= radius:
-            status = "🟢 Compatible"
-        elif s_ra <= radius + 2:
-            status = "🟡 Borderline"
+        # --- Compatibility Table ---
+        st.subheader("🧾 Solvent Compatibility Table")
+        solvent_data = []
+        for name, (s_dd, s_dp, s_dh) in materials["Solvents"].items():
+            ra_val = calculate_ra(resin_dd, resin_dp, resin_dh, s_dd, s_dp, s_dh)
+            match = "✓" if ra_val <= radius else "✗"
+            solvent_data.append({
+                "Solvent": name, "δD": s_dd, "δP": s_dp, "δH": s_dh,
+                "Ra": round(ra_val, 2), "Match": match
+            })
+        df = pd.DataFrame(solvent_data)
+        st.dataframe(df)
+
+# --- Page: Custom Solvent ---
+elif page == "➕ Custom Solvent":
+    st.title("Add a Custom Solvent")
+    name = st.text_input("Solvent Name")
+    dd = st.number_input("δD", step=0.1, format="%.1f")
+    dp = st.number_input("δP", step=0.1, format="%.1f")
+    dh = st.number_input("δH", step=0.1, format="%.1f")
+
+    if st.button("Add Solvent"):
+        if name.strip() == "":
+            st.warning("Please provide a solvent name.")
         else:
-            status = "🔴 Incompatible"
-        solvent_data.append({
-            "Solvent": name,
-            "δD": s_dd,
-            "δP": s_dp,
-            "δH": s_dh,
-            "Ra": round(s_ra, 2),
-            "Match": status
-        })
-
-    df = pd.DataFrame(solvent_data)
-    df = df.sort_values("Ra")
-    st.dataframe(df)
-
-# --- Nieuw solvent toevoegen ---
-st.subheader("➕ Add a Custom Solvent")
-new_name = st.text_input("Naam")
-new_dd = st.number_input("δD", step=0.1, format="%.1f")
-new_dp = st.number_input("δP", step=0.1, format="%.1f")
-new_dh = st.number_input("δH", step=0.1, format="%.1f")
-
-radius = st.slider("Choose Ra cutoff value:", 2.0, 15.0, 7.0, step=0.1)
-
-if st.button("Add Solvent"):
-    if new_name.strip() == "":
-        st.warning("Please enter a solvent name.")
-    else:
-        # Voeg toe aan solvent dictionary
-        materials["Solvents"][new_name] = (new_dd, new_dp, new_dh)
-        st.success(f"Custom solvent '{new_name}' added!")
-
-        # 🧠 Bereken direct compatibiliteit met geselecteerde resin
-        if resin_dd is not None and resin_dp is not None and resin_dh is not None:
-            ra = calculate_ra(resin_dd, resin_dp, resin_dh, new_dd, new_dp, new_dh)
-
-            if ra <= radius:
-                st.success(f"🟢 '{new_name}' is Compatible (Ra = {ra:.2f} ≤ {radius})")
-            elif ra <= radius + 2:
-                st.warning(f"🟡 '{new_name}' is Borderline (Ra = {ra:.2f})")
-            else:
-                st.error(f"🔴 '{new_name}' is Incompatible (Ra = {ra:.2f} > {radius + 2})")
+            materials["Solvents"][name] = (dd, dp, dh)
+            st.success(f"Solvent '{name}' added.")
