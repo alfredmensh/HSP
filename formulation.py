@@ -1,46 +1,52 @@
 import streamlit as st
 from PIL import Image
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 
-# --- Set up page configuration ---
-st.set_page_config(page_title="FormChemie", layout="centered")
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="FormChem", layout="wide")
 
-# --- Custom Orbitron Font and Glassy UI Styling ---
+# --- CUSTOM CSS FOR TESLA STYLE ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Orbitron', sans-serif;
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-        color: #0D1B2A;
-    }
-
-    .block-container {
-        padding: 2rem 2rem 2rem 2rem;
-        background-color: rgba(255,255,255,0.85);
-        border-radius: 20px;
-        box-shadow: 0 4px 30px rgba(0,0,0,0.1);
-    }
-
-    h1, h2, h3 {
-        color: #1A73E8;
-    }
-
+        html, body, [class*="css"]  {
+            font-family: 'Helvetica', sans-serif;
+            background-color: white;
+            color: #111;
+        }
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            padding-left: 5rem;
+            padding-right: 5rem;
+        }
+        h1, h2, h3 {
+            font-weight: 600;
+        }
+        .css-18e3th9 {
+            padding-top: 2rem;
+        }
+        .stButton>button {
+            background-color: black;
+            color: white;
+            border-radius: 0px;
+            font-weight: 500;
+        }
+        .stSlider > div {
+            color: #111;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-# --- Logo ---
+# --- SIDEBAR ---
+st.sidebar.title("🔬 FormChem")
+page = st.sidebar.radio("Navigate to:", ["Home", "Compatibility Tool", "Customization"])
+
+# --- LOGO ---
 logo = Image.open("formchem_logo.png")
-st.image(logo, width=120)
+st.sidebar.image(logo, width=120)
 
-# --- Sidebar Navigation ---
-st.sidebar.title("🔬 FormChemie")
-page = st.sidebar.radio("Navigate", ["🏠 Home", "🧪 Formulation Tool", "➕ Custom Solvent"])
-
-# --- Sample Database ---
+# --- MATERIAL DATABASE ---
 materials = {
     "Resins": {
         "Epoxy Resin": (17.0, 10.0, 8.0),
@@ -54,84 +60,103 @@ materials = {
     }
 }
 
-# --- Page: Home ---
-if page == "🏠 Home":
-    st.title("Welcome to FormChemie")
-    st.markdown("""
-    **FormChemie** is a modern web tool for formulators in the coating and resin industries.  
-    We help chemists and engineers evaluate the **Hansen Solubility Parameters (HSP)**  
-    and determine **solvent-resin compatibility** through visual maps and compatibility scores.
+def calculate_ra(dd1, dp1, dh1, dd2, dp2, dh2):
+    return ((4 * (dd1 - dd2)**2) + ((dp1 - dp2)**2) + ((dh1 - dh2)**2))**0.5
 
-    🔍 _Check compatibility in seconds_  
-    🎨 _Use advanced Hansen space visualizations_  
-    ✏️ _Customize your own solvents or resins_  
+# --- HOME PAGE ---
+if page == "Home":
+    st.markdown("### 🌿 Welcome to")
+    st.markdown("# **FormChem**")
+    st.image("formchem_logo.png", width=150)
+    st.markdown("""
+    FormChem is a **digital formulation tool** powered by Hansen Solubility Parameters (HSP).
+    
+    🚀 **Features:**
+    - Predict resin-solvent compatibility
+    - Visualize interaction in HSP space
+    - Customize your own solvent systems
+    
     """)
     st.markdown("---")
-    st.info("This is a student project created to demonstrate computational chemistry applications.")
 
-# --- Page: Formulation Tool ---
-elif page == "🧪 Formulation Tool":
-    st.title("HSP Compatibility Calculator")
-    resin_choice = st.selectbox("Choose a Resin", list(materials["Resins"].keys()))
-    solvent_choice = st.selectbox("Choose a Solvent", list(materials["Solvents"].keys()))
+# --- COMPATIBILITY TOOL PAGE ---
+elif page == "Compatibility Tool":
+    st.markdown("### 🧪 Resin–Solvent Compatibility")
+    st.markdown("#### Select a resin and solvent to calculate compatibility (Ra) and visualize the result.")
 
+    resin_choice = st.selectbox("Choose Resin", list(materials["Resins"].keys()))
     resin_dd, resin_dp, resin_dh = materials["Resins"][resin_choice]
-    solvent_dd, solvent_dp, solvent_dh = materials["Solvents"][solvent_choice]
 
-    def calculate_ra(dd1, dp1, dh1, dd2, dp2, dh2):
-        return ((4*(dd1 - dd2)**2) + ((dp1 - dp2)**2) + ((dh1 - dh2)**2))**0.5
+    solvent_choice = st.selectbox("Choose Solvent", list(materials["Solvents"].keys()))
+    solvent_dd, solvent_dp, solvent_dh = materials["Solvents"][solvent_choice]
 
     if st.button("Calculate Compatibility"):
         ra = calculate_ra(resin_dd, resin_dp, resin_dh, solvent_dd, solvent_dp, solvent_dh)
-        radius = st.slider("Adjust Compatibility Radius (Ra)", 2.0, 15.0, 7.0, step=0.1)
+        radius = st.slider("Set Compatibility Radius", 2.0, 15.0, 7.0, step=0.1)
 
-        st.write(f"**Ra = {ra:.2f}**")
+        st.markdown(f"**Ra = {ra:.2f}**")
+
         if ra <= radius:
-            st.success(f"🟢 Compatible")
+            st.success(f"🟢 Compatible (Ra = {ra:.2f})")
         elif ra <= radius + 2:
-            st.warning(f"🟡 Borderline")
+            st.warning(f"🟡 Borderline (Ra = {ra:.2f})")
         else:
-            st.error(f"🔴 Incompatible")
+            st.error(f"🔴 Incompatible (Ra = {ra:.2f})")
 
-        # --- Visualize Hansen Space ---
+        # Plot
         fig, ax = plt.subplots()
-        ax.scatter(resin_dd, resin_dp, color='blue', label='Resin', s=120, marker='*')
-        ax.scatter(solvent_dd, solvent_dp, color='green', label='Solvent', s=100)
-        ax.plot([resin_dd, solvent_dd], [resin_dp, solvent_dp], 'k--')
+        ax.scatter(resin_dd, resin_dp, color='blue', s=150, marker='*', label='Resin')
+        ax.scatter(solvent_dd, solvent_dp, color='green', s=100, label='Solvent')
         circle = plt.Circle((resin_dd, resin_dp), radius, color='blue', fill=False, linestyle='--')
         ax.add_patch(circle)
-
-        ax.set_xlabel("δD")
-        ax.set_ylabel("δP")
-        ax.set_title("Hansen Space Visualization")
+        ax.set_xlabel("δD (Dispersion)")
+        ax.set_ylabel("δP (Polar)")
+        ax.set_title("Hansen Space")
         ax.legend()
         ax.grid(True)
         st.pyplot(fig)
 
-        # --- Compatibility Table ---
-        st.subheader("🧾 Solvent Compatibility Table")
-        solvent_data = []
-        for name, (s_dd, s_dp, s_dh) in materials["Solvents"].items():
-            ra_val = calculate_ra(resin_dd, resin_dp, resin_dh, s_dd, s_dp, s_dh)
-            match = "✓" if ra_val <= radius else "✗"
-            solvent_data.append({
-                "Solvent": name, "δD": s_dd, "δP": s_dp, "δH": s_dh,
-                "Ra": round(ra_val, 2), "Match": match
-            })
-        df = pd.DataFrame(solvent_data)
-        st.dataframe(df)
+# --- CUSTOMIZATION PAGE ---
+elif page == "Customization":
+    st.markdown("### ➕ Add Your Own Solvent")
+    st.markdown("Define solvent parameters to test compatibility against known resins.")
 
-# --- Page: Custom Solvent ---
-elif page == "➕ Custom Solvent":
-    st.title("Add a Custom Solvent")
-    name = st.text_input("Solvent Name")
-    dd = st.number_input("δD", step=0.1, format="%.1f")
-    dp = st.number_input("δP", step=0.1, format="%.1f")
-    dh = st.number_input("δH", step=0.1, format="%.1f")
+    resin_choice = st.selectbox("Resin for Comparison", list(materials["Resins"].keys()), key="custom_resin")
+    resin_dd, resin_dp, resin_dh = materials["Resins"][resin_choice]
+
+    radius = st.slider("Compatibility Radius", 2.0, 15.0, 7.0, step=0.1)
+
+    new_name = st.text_input("Solvent Name")
+    new_dd = st.number_input("δD", step=0.1, format="%.1f")
+    new_dp = st.number_input("δP", step=0.1, format="%.1f")
+    new_dh = st.number_input("δH", step=0.1, format="%.1f")
 
     if st.button("Add Solvent"):
-        if name.strip() == "":
-            st.warning("Please provide a solvent name.")
+        if new_name.strip() == "":
+            st.warning("Please enter a valid name.")
         else:
-            materials["Solvents"][name] = (dd, dp, dh)
-            st.success(f"Solvent '{name}' added.")
+            materials["Solvents"][new_name] = (new_dd, new_dp, new_dh)
+            st.success(f"Added solvent: {new_name}")
+
+    # Build table
+    solvent_data = []
+    for name, (s_dd, s_dp, s_dh) in materials["Solvents"].items():
+        ra = calculate_ra(resin_dd, resin_dp, resin_dh, s_dd, s_dp, s_dh)
+        if ra <= radius:
+            match = "🟢 Compatible"
+        elif ra <= radius + 2:
+            match = "🟡 Borderline"
+        else:
+            match = "🔴 Incompatible"
+        solvent_data.append({
+            "Solvent": name,
+            "δD": s_dd,
+            "δP": s_dp,
+            "δH": s_dh,
+            "Ra": round(ra, 2),
+            "Match": match
+        })
+
+    df = pd.DataFrame(solvent_data).sort_values("Ra")
+    st.markdown("#### Solvent Compatibility Table")
+    st.dataframe(df)
